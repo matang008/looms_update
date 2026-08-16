@@ -161,6 +161,14 @@
   </div>
 </div>
 
+<div style="background:var(--card-bg); padding:15px; margin:20px; border-radius:12px; border:1px solid rgba(255,255,255,0.05); display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+   <span style="font-weight:bold; margin-right:10px;">Export History:</span>
+   <input type="date" id="startDate" style="padding:8px; border-radius:6px; background:#0f172a; color:white; border:1px solid #475569;">
+   <span>to</span>
+   <input type="date" id="endDate" style="padding:8px; border-radius:6px; background:#0f172a; color:white; border:1px solid #475569;">
+   <button onclick="downloadHistory(event)" style="padding:8px 15px; background:#3b82f6; border:none; color:white; border-radius:6px; font-weight:bold; cursor:pointer;">Download CSV</button>
+</div>
+
 <div class="container" id="devicesContainer">
   <div class="loader">Syncing with factory...</div>
 </div>
@@ -168,6 +176,7 @@
 <script>
   const urlParams = new URLSearchParams(window.location.search);
   const clientId = urlParams.get('client') || 'client_A';
+  let currentDevices = [];
   
   // Set the top navigation title
   document.getElementById('appTitle').innerText = clientId.replace(/_/g, ' ');
@@ -196,6 +205,7 @@
       let html = '';
       
       const devices = Object.keys(data);
+      currentDevices = devices;
       
       devices.forEach(deviceName => {
         const devData = data[deviceName];
@@ -251,6 +261,74 @@
     } catch (error) {
       console.error("Fetch error:", error);
     }
+  }
+
+  async function downloadHistory(event) {
+      const start = document.getElementById('startDate').value;
+      const end = document.getElementById('endDate').value;
+      if (!start || !end) {
+          alert("Please select both a Start Date and an End Date.");
+          return;
+      }
+      
+      const startObj = new Date(start);
+      const endObj = new Date(end);
+      if (startObj > endObj) {
+          alert("Start Date cannot be after End Date.");
+          return;
+      }
+
+      const btn = event.target;
+      btn.innerText = "Generating...";
+      btn.disabled = true;
+
+      // Generate array of date strings
+      let dates = [];
+      let curr = new Date(startObj);
+      while (curr <= endObj) {
+          dates.push(curr.toISOString().split('T')[0]);
+          curr.setDate(curr.getDate() + 1);
+      }
+
+      let csvContent = "Date,Time,Device,Event,Design,PICs Completed,Total PICs,Total Time (sec),Active Time (sec),Efficiency (%)\n";
+      let recordsFound = 0;
+
+      for (const deviceName of currentDevices) {
+          for (const date of dates) {
+              const url = \`https://looms-de109-default-rtdb.firebaseio.com/clients/\${clientId}/devices/\${deviceName}/history/\${date}.json\`;
+              try {
+                  const res = await fetch(url);
+                  const data = await res.json();
+                  if (data) {
+                      const records = Object.values(data);
+                      records.forEach(r => {
+                          recordsFound++;
+                          let eff = "0%";
+                          if (r.total_sec > 0 && r.active_sec > 0) {
+                              eff = Math.min(100, Math.round((r.active_sec / r.total_sec) * 100)) + "%";
+                          }
+                          csvContent += \`\${date},\${r.time},\${deviceName.replace(/_/g, ' ')},\${r.event},\${r.design},\${r.pics},\${r.total_pics},\${r.total_sec},\${r.active_sec},\${eff}\\n\`;
+                      });
+                  }
+              } catch(e) { console.error(e); }
+          }
+      }
+
+      if (recordsFound === 0) {
+          alert("No historical records found for the selected date range.");
+      } else {
+          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(blob);
+          link.download = \`Factory_Report_\${start}_to_\${end}.csv\`;
+          link.style.visibility = 'hidden';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+      }
+      
+      btn.innerText = "Download CSV";
+      btn.disabled = false;
   }
 
   // Fetch immediately and then every 2 seconds
