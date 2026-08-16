@@ -198,8 +198,8 @@
       const response = await fetch(FIREBASE_BASE);
       if (!response.ok) return;
       
-      const data = await response.json();
-      if (!data) return;
+      let data = await response.json();
+      if (!data) data = {};
 
       const container = document.getElementById('devicesContainer');
       let html = '';
