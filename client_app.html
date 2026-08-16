@@ -174,6 +174,16 @@
   
   const FIREBASE_BASE = `https://looms-de109-default-rtdb.firebaseio.com/clients/${clientId}/devices.json`;
 
+  function formatActiveTime(totalSec) {
+    if (!totalSec && totalSec !== 0) return "--";
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    if (h > 0) return `${h}h ${m}m ${s}s`;
+    if (m > 0) return `${m}m ${s}s`;
+    return `${s}s`;
+  }
+
   async function fetchCloudData() {
     try {
       const response = await fetch(FIREBASE_BASE);
@@ -195,6 +205,7 @@
         let displayPic = (status.line || 0) + " / " + (status.total || 0);
         let displaySpeed = status.spd || "--";
         let displayFile = status.file || "--";
+        let displayActive = formatActiveTime(status.active_sec);
         
         // If locked by admin, just show as offline/maintenance to the client
         if (devData.locked === true) {
@@ -216,6 +227,10 @@
               <div class="metric metric-full">
                 <span class="metric-label">Current Design</span>
                 <span class="metric-value" style="color:var(--accent);">${displayFile}</span>
+              </div>
+              <div class="metric">
+                <span class="metric-label">Active Time</span>
+                <span class="metric-value" style="color:var(--success);">${displayActive}</span>
               </div>
               <div class="metric">
                 <span class="metric-label">Progress (PIC)</span>
