@@ -162,8 +162,9 @@
 </div>
 
 <script>
-  // YOUR FIREBASE URL GOES HERE
-  const FIREBASE_BASE = "https://looms-de109-default-rtdb.firebaseio.com/devices.json";
+  const urlParams = new URLSearchParams(window.location.search);
+  const clientId = urlParams.get('client') || 'client_A';
+  const FIREBASE_BASE = `https://looms-de109-default-rtdb.firebaseio.com/clients/${clientId}/devices.json`;
 
   async function fetchCloudData() {
     try {
