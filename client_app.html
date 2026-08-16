@@ -57,6 +57,10 @@
     .container {
       padding: 20px;
       padding-bottom: 80px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 20px;
+      align-items: start;
     }
 
     /* Device Card */
@@ -151,7 +155,7 @@
 <body>
 
 <div class="nav">
-  <h1>My Factory</h1>
+  <h1 id="appTitle">My Factory</h1>
   <div style="font-size:12px; color:#cbd5e1; display:flex; align-items:center; gap:6px;">
     <span style="width:6px; height:6px; background:#10b981; border-radius:50%; display:inline-block;"></span> Live
   </div>
@@ -164,6 +168,10 @@
 <script>
   const urlParams = new URLSearchParams(window.location.search);
   const clientId = urlParams.get('client') || 'client_A';
+  
+  // Set the top navigation title
+  document.getElementById('appTitle').innerText = clientId.replace(/_/g, ' ');
+  
   const FIREBASE_BASE = `https://looms-de109-default-rtdb.firebaseio.com/clients/${clientId}/devices.json`;
 
   async function fetchCloudData() {
