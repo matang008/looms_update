@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <!-- PWA Meta Tags for Mobile -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/React-icon.svg/512px-React-icon.svg.png"> <!-- Placeholder App Icon -->
+  <title>Loom Monitor</title>
+  
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: rgba(30, 41, 59, 0.7);
+      --text: #f8fafc;
+      --accent: #3b82f6;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --offline: #64748b;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+    
+    /* Top Navigation Bar */
+    .nav {
+      background: rgba(15, 23, 42, 0.9);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      padding: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      z-index: 100;
+      padding-top: max(20px, env(safe-area-inset-top)); /* iPhone notch support */
+    }
+    .nav h1 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .container {
+      padding: 20px;
+      padding-bottom: 80px;
+    }
+
+    /* Device Card */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    .device-name {
+      font-size: 20px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    
+    .badge {
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .state-RUNNING { background: rgba(16, 185, 129, 0.2); color: var(--success); }
+    .state-PAUSED { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
+    .state-IDLE { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
+    .state-OFFLINE { background: rgba(100, 116, 139, 0.2); color: var(--offline); }
+
+    .dot-RUNNING { background: var(--success); box-shadow: 0 0 8px var(--success); }
+    .dot-PAUSED { background: var(--warning); }
+    .dot-IDLE { background: var(--danger); }
+    .dot-OFFLINE { background: var(--offline); }
+
+    /* Metrics Grid */
+    .metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+    
+    .metric {
+      display: flex;
+      flex-direction: column;
+    }
+    .metric-label {
+      font-size: 11px;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+    .metric-value {
+      font-size: 18px;
+      font-weight: 600;
+      color: #fff;
+    }
+    .metric-full {
+      grid-column: span 2;
+    }
+
+    .loader {
+      text-align: center;
+      color: #64748b;
+      margin-top: 50px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="nav">
+  <h1>My Factory</h1>
+  <div style="font-size:12px; color:#cbd5e1; display:flex; align-items:center; gap:6px;">
+    <span style="width:6px; height:6px; background:#10b981; border-radius:50%; display:inline-block;"></span> Live
+  </div>
+</div>
+
+<div class="container" id="devicesContainer">
+  <div class="loader">Syncing with factory...</div>
+</div>
+
+<script>
+  // YOUR FIREBASE URL GOES HERE
+  const FIREBASE_BASE = "https://looms-de109-default-rtdb.firebaseio.com/devices.json";
+
+  async function fetchCloudData() {
+    try {
+      const response = await fetch(FIREBASE_BASE);
+      if (!response.ok) return;
+      
+      const data = await response.json();
+      if (!data) return;
+
+      const container = document.getElementById('devicesContainer');
+      let html = '';
+      
+      const devices = Object.keys(data);
+      
+      devices.forEach(deviceName => {
+        const devData = data[deviceName];
+        const status = devData.status || {};
+        
+        let state = status.state || "UNKNOWN";
+        let displayPic = (status.line || 0) + " / " + (status.total || 0);
+        let displaySpeed = status.spd || "--";
+        let displayFile = status.file || "--";
+        
+        // If locked by admin, just show as offline/maintenance to the client
+        if (devData.locked === true) {
+           state = "OFFLINE";
+           displayFile = "Under Maintenance";
+        }
+
+        html += `
+          <div class="card">
+            <div class="card-header">
+              <div class="device-name">
+                <div class="status-dot dot-${state}"></div>
+                ${deviceName.replace(/_/g, ' ')}
+              </div>
+              <span class="badge state-${state}">${state}</span>
+            </div>
+            
+            <div class="metrics">
+              <div class="metric metric-full">
+                <span class="metric-label">Current Design</span>
+                <span class="metric-value" style="color:var(--accent);">${displayFile}</span>
+              </div>
+              <div class="metric">
+                <span class="metric-label">Progress (PIC)</span>
+                <span class="metric-value">${displayPic}</span>
+              </div>
+              <div class="metric">
+                <span class="metric-label">Speed</span>
+                <span class="metric-value">${displaySpeed}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      
+      if (html === '') html = '<div class="loader">No machines found on the network.</div>';
+      container.innerHTML = html;
+
+    } catch (error) {
+      console.error("Fetch error:", error);
+    }
+  }
+
+  // Fetch immediately and then every 2 seconds
+  fetchCloudData();
+  setInterval(fetchCloudData, 2000);
+</script>
+
+</body>
+</html>
