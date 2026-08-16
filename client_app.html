@@ -295,7 +295,7 @@
 
       for (const deviceName of currentDevices) {
           for (const date of dates) {
-              const url = \`https://looms-de109-default-rtdb.firebaseio.com/clients/\${clientId}/devices/\${deviceName}/history/\${date}.json\`;
+              const url = `https://looms-de109-default-rtdb.firebaseio.com/clients/${clientId}/devices/${deviceName}/history/${date}.json`;
               try {
                   const res = await fetch(url);
                   const data = await res.json();
@@ -307,7 +307,7 @@
                           if (r.total_sec > 0 && r.active_sec > 0) {
                               eff = Math.min(100, Math.round((r.active_sec / r.total_sec) * 100)) + "%";
                           }
-                          csvContent += \`\${date},\${r.time},\${deviceName.replace(/_/g, ' ')},\${r.event},\${r.design},\${r.pics},\${r.total_pics},\${r.total_sec},\${r.active_sec},\${eff}\\n\`;
+                          csvContent += `${date},${r.time},${deviceName.replace(/_/g, ' ')},${r.event},${r.design},${r.pics},${r.total_pics},${r.total_sec},${r.active_sec},${eff}\n`;
                       });
                   }
               } catch(e) { console.error(e); }
@@ -320,7 +320,7 @@
           const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
           const link = document.createElement("a");
           link.href = URL.createObjectURL(blob);
-          link.download = \`Factory_Report_\${start}_to_\${end}.csv\`;
+          link.download = `Factory_Report_${start}_to_${end}.csv`;
           link.style.visibility = 'hidden';
           document.body.appendChild(link);
           link.click();
